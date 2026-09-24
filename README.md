@@ -1,7 +1,9 @@
 # Notes API
 
 Backend REST API untuk aplikasi catatan + tugas (login, register, profil, kategori,
-catatan CRUD, todo list, pencarian). Dibuat dengan **Node.js, Express, Prisma, dan PostgreSQL**.
+catatan CRUD, todo list, pencarian). Dibuat dengan **Node.js, Express, Prisma, dan
+PostgreSQL** — dirancang supaya bisa langsung di-push ke GitHub dan di-deploy tanpa
+perlu dijalankan di komputer lokal.
 
 ## Struktur proyek
 
@@ -17,6 +19,7 @@ notes-api/
 │   ├── lib/prisma.js          # koneksi database
 │   └── index.js               # entry point server
 ├── render.yaml                # blueprint deploy otomatis ke Render
+├── railway.toml                # config build & start untuk Railway
 ├── .env.example
 └── package.json
 ```
@@ -41,7 +44,55 @@ git branch -M main
 git push -u origin main
 ```
 
-## 2. Deploy ke Render (gratis, otomatis dari GitHub)
+## 2. Deploy tanpa kartu kredit
+
+Ada beberapa opsi hosting. Semuanya bisa dipakai lewat blueprint/config yang sudah
+disertakan (`render.yaml` untuk Render, `railway.toml` untuk Railway).
+
+### Opsi A — Railway (mudah, tapi jangka panjang tetap perlu kartu)
+
+1. Buka [railway.app](https://railway.app) → daftar/masuk pakai akun GitHub.
+2. **New Project** → **Deploy from GitHub repo** → pilih repo `notes-api`.
+3. Di project yang sama, klik **+ New** → **Database** → **PostgreSQL**. Railway
+   otomatis membuat variabel `DATABASE_URL` dan menghubungkannya ke service kamu
+   (klik service API → tab **Variables** → **Add Reference** → pilih `DATABASE_URL`
+   dari service Postgres).
+4. Tambahkan variabel lain secara manual di tab **Variables** service API:
+   `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (isi string acak panjang),
+   `JWT_ACCESS_EXPIRES=15m`, `JWT_REFRESH_EXPIRES_DAYS=30`, `CORS_ORIGIN=*`.
+5. Railway otomatis mendeteksi `railway.toml` untuk perintah build & start
+   (termasuk migrasi database). Deploy berjalan otomatis, dan setiap `git push`
+   berikutnya akan redeploy otomatis.
+6. Dapat URL publik seperti `https://notes-api-production.up.railway.app`.
+
+> **Catatan jujur:** sign up Railway tidak minta kartu di awal dan kamu dapat
+> kredit gratis $5 (berlaku 30 hari). Tapi begitu kredit itu habis, untuk tetap
+> online kamu perlu upgrade ke paket Hobby ($5/bulan) yang meminta kartu. Cocok
+> untuk uji coba/demo, kurang cocok kalau targetnya benar-benar gratis selamanya.
+
+### Opsi B — Vercel + Supabase (benar-benar gratis, tanpa kartu sama sekali)
+
+Kombinasi ini tidak pernah minta kartu kredit untuk pemakaian skala kecil:
+
+1. **Database**: buka [supabase.com](https://supabase.com) → daftar pakai GitHub
+   (tanpa kartu) → **New Project** → salin **Connection string** (mode
+   "Transaction pooler") sebagai `DATABASE_URL`.
+2. **Hosting API**: buka [vercel.com](https://vercel.com) → daftar pakai GitHub
+   (tanpa kartu) → **Add New → Project** → import repo `notes-api`.
+3. Tambahkan environment variables yang sama (`DATABASE_URL`, `JWT_ACCESS_SECRET`,
+   dst.) di halaman **Settings → Environment Variables**.
+4. Karena Vercel menjalankan kode sebagai serverless function (bukan server yang
+   terus menyala), perlu sedikit penyesuaian: tambahkan file `api/index.js` yang
+   meng-export `app` dari `src/index.js`, dan `vercel.json` yang mengarahkan semua
+   route ke file itu. Bilang saja kalau mau saya siapkan versi projectnya sekalian.
+5. Deploy otomatis setiap `git push`, dan keduanya (Vercel + Supabase) punya paket
+   gratis permanen untuk skala aplikasi pribadi — tidak ada tanggal kedaluwarsa.
+
+Kalau prioritasmu "gratis selamanya tanpa kartu", **Opsi B** yang paling aman.
+Kalau prioritasmu "paling gampang setup, siap bayar $5/bulan kalau perlu",
+**Opsi A (Railway)** lebih cepat.
+
+## 3. Deploy ke Render (alternatif, kadang juga minta verifikasi kartu)
 
 1. Buka [render.com](https://render.com) → daftar/masuk pakai akun GitHub.
 2. Klik **New +** → **Blueprint**.
@@ -65,7 +116,7 @@ Kalau mau pakai [railway.app](https://railway.app) sebagai gantinya: buat projec
 `DATABASE_URL` yang otomatis dibuat Railway ke Environment Variables service kamu,
 lalu tambahkan variabel lain dari `.env.example` secara manual.
 
-## 3. Environment variables
+## 4. Environment variables
 
 Salin dari `.env.example`. Di Render, sebagian besar (secret JWT, `DATABASE_URL`)
 sudah otomatis diisi oleh `render.yaml`. Yang perlu kamu sesuaikan sendiri:
@@ -76,7 +127,7 @@ sudah otomatis diisi oleh `render.yaml`. Yang perlu kamu sesuaikan sendiri:
 | `JWT_ACCESS_EXPIRES` | Umur access token, default `15m`. |
 | `JWT_REFRESH_EXPIRES_DAYS` | Umur refresh token dalam hari, default `30`. |
 
-## 4. Referensi endpoint
+## 5. Referensi endpoint
 
 Base URL: `https://<domain-render-kamu>/api`
 
@@ -124,7 +175,7 @@ Base URL: `https://<domain-render-kamu>/api`
 Semua respons error berbentuk `{ "message": "..." }` dengan status code yang sesuai
 (400 validasi, 401 auth, 404 tidak ditemukan, 409 duplikat).
 
-## 5. Integrasi dengan Flutter
+## 6. Integrasi dengan Flutter
 
 Tambahkan package `http` di `pubspec.yaml`, lalu contoh pemanggilan API:
 
@@ -158,7 +209,7 @@ Future<List<dynamic>> getNotes(String accessToken) async {
 Simpan `accessToken` dan `refreshToken` dengan `flutter_secure_storage`, lalu
 panggil `/auth/refresh` saat menerima status 401 dari endpoint lain.
 
-## 6. Menjalankan lokal (opsional, untuk development)
+## 7. Menjalankan lokal (opsional, untuk development)
 
 Kalau suatu saat ingin coba di komputer sendiri:
 
